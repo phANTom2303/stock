@@ -1,4 +1,4 @@
-const pool = require('../db')
+const pool = require('../config/db.js')
 
 async function handleGetCompanyList(req, res){
     try{
