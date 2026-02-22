@@ -11,14 +11,12 @@ async function fetchStockData(req,res) {
             });
         }
 
-        const query = `SELECT sp.date,
-                              sp.open, sp.high, sp.low, sp.close
-                              FROM stock_prices sp
-                              JOIN companies c
-                              ON sp.company_id = c.company_id
-                              WHERE c.company_symbol =  $1
-                              AND sp.date BETWEEN $2 and $3
-                              ORDER BY sp.date ASC`;
+        const query = `SELECT time,
+                              open, high, low, close
+                              FROM stock_data
+                              WHERE symbol =  $1
+                              AND time BETWEEN $2 and $3
+                              ORDER BY time ASC`;
         
         const values = [company_symbol, start_date, end_date];
         const result = await pool.query(query,values);
