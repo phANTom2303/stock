@@ -1,7 +1,10 @@
 const express = require('express');
-const router = express.Router();
+const stockRouter = express.Router();
 
 const {handleGetCompanyList} = require('#/controllers/companyList');
 const {fetchStockData}       = require('#/controllers/stock_data');
 
-module.exports = router;
+stockRouter.get("/get_company_list", handleGetCompanyList);
+stockRouter.get("/get_stock_data", fetchStockData);
+
+module.exports = stockRouter;
