@@ -3,7 +3,7 @@ const pool = require('#config/db.js')
 async function handleGetCompanyList(req, res){
     try{
         //Fetch from db
-        const query = `SELECT company_symbol, company_name
+        const query = `SELECT symbol, company_name
                        FROM companies
                        ORDER BY company_name ASC`;
         
