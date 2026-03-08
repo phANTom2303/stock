@@ -1,3 +1,5 @@
 .env
 node_modules
 .vscode
+NSE_EQ_NORMAL_EQUITY.json
+SEED_COMPANY.json

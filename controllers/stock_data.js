@@ -1,45 +1,91 @@
-const pool = require('#config/db.js')
+const pool = require('#config/db.js');
+const axios = require('axios');
 
-async function fetchStockData(req,res) {
-    try{
-        const{company_symbol, start_date, end_date} = req.query;
+const UPSTOX_BASE_URL = 'https://api.upstox.com/v3/historical-candle';
 
-        if(!company_symbol || !start_date || !end_date){
+async function fetchStockData(req, res) {
+    try {
+        const {
+            company_symbol,
+            start_date,
+            end_date,
+            unit = 'days',
+            interval = '1',
+        } = req.query;
+
+        if (!company_symbol || !start_date || !end_date) {
             return res.status(400).json({
                 success: false,
-                message: "All fields required"
+                message: "company_symbol, start_date, and end_date are required",
             });
         }
 
-        const query = `SELECT time,
-                              open, high, low, close
-                              FROM stock_data
-                              WHERE symbol =  $1
-                              AND time BETWEEN $2 and $3
-                              ORDER BY time ASC`;
-        
-        const values = [company_symbol, start_date, end_date];
-        const result = await pool.query(query,values);
+        // Look up the instrument key from the companies table
+        const companyResult = await pool.query(
+            'SELECT instrument_key FROM companies WHERE symbol = $1',
+            [company_symbol]
+        );
 
-        if(result.rows.length === 0){
+        if (companyResult.rows.length === 0) {
             return res.status(404).json({
                 success: false,
-                message: "No stock data found"
+                message: `Company with symbol '${company_symbol}' not found`,
             });
         }
+
+        const instrumentKey = companyResult.rows[0].instrument_key;
+        const encodedKey = encodeURIComponent(instrumentKey);
+
+        // Call the Upstox historical candle API
+        const url = `${UPSTOX_BASE_URL}/${encodedKey}/${unit}/${interval}/${end_date}/${start_date}`;
+
+        const response = await axios.get(url, {
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+        });
+
+        const candles = response.data?.data?.candles;
+
+        if (!candles || candles.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No stock data found for the given period",
+            });
+        }
+
+        // Map candle arrays to labeled objects
+        const data = candles.map((c) => ({
+            time: c[0],
+            open: c[1],
+            high: c[2],
+            low: c[3],
+            close: c[4],
+            volume: c[5],
+            open_interest: c[6],
+        }));
 
         return res.status(200).json({
             success: true,
-            data: result.rows
+            symbol: company_symbol,
+            instrument_key: instrumentKey,
+            data,
         });
-    }
+    } catch (error) {
+        console.error("Error:", error?.response?.data || error.message);
 
-    catch(error){
-        console.error("Error:", error);
+        if (error.response) {
+            return res.status(error.response.status).json({
+                success: false,
+                message: error.response.data?.message || "Upstox API error",
+            });
+        }
+
         return res.status(500).json({
-        success: false,
-        message: "Server error",
-    });
+            success: false,
+            message: "Server error",
+        });
     }
 }
 
